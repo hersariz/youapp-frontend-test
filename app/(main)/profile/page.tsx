@@ -20,6 +20,7 @@ function getCroppedImg(image: HTMLImageElement, crop: PixelCrop): Promise<string
     return Promise.reject(new Error('No 2d context'));
   }
 
+  // Gambar crop ke canvas
   ctx.drawImage(
     image,
     crop.x * scaleX,
@@ -32,14 +33,14 @@ function getCroppedImg(image: HTMLImageElement, crop: PixelCrop): Promise<string
     crop.height
   );
 
-  return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (!blob) {
-        return reject(new Error('Canvas is empty'));
-      }
-      resolve(URL.createObjectURL(blob));
-    }, 'image/jpeg', 0.95);
-  });
+  // Gunakan toDataURL untuk langsung mendapatkan base64 string
+  // Ini lebih aman daripada URL.createObjectURL untuk React
+  try {
+    const base64Image = canvas.toDataURL('image/jpeg', 0.95);
+    return Promise.resolve(base64Image);
+  } catch (e) {
+    return Promise.reject(new Error('Canvas export failed'));
+  }
 }
 
 // --- Icons ---
@@ -317,22 +318,16 @@ const ImageCropModal = ({
   function onImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
     const { width, height } = e.currentTarget;
     
-    // Make the crop a square in the center of the image
-    const crop = centerCrop(
-      makeAspectCrop(
-        {
-          unit: '%',
-          width: 90,
-        },
-        1, // square aspect ratio
-        width,
-        height
-      ),
-      width,
-      height
-    );
+    // Buat crop awal tanpa aspect ratio yang tetap
+    const initialCrop: Crop = {
+      unit: '%',
+      x: 5,
+      y: 5,
+      width: 90,
+      height: 90
+    };
     
-    setCrop(crop);
+    setCrop(initialCrop);
   }
 
   const handleComplete = async () => {
@@ -349,15 +344,14 @@ const ImageCropModal = ({
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
       <div className="bg-gray-800 rounded-xl p-5 max-w-lg w-full">
-        <h3 className="text-lg font-bold mb-4">Crop Your Image</h3>
+        <h3 className="text-lg font-bold mb-4">Sesuaikan Gambar Profil</h3>
+        <p className="text-sm text-gray-300 mb-4">Geser dan sesuaikan gambar agar pas dengan frame profil. Anda bebas mengatur ukuran dan posisi crop.</p>
         
         <div className="mb-4">
           <ReactCrop
             crop={crop}
             onChange={(c) => setCrop(c)}
             onComplete={(c) => setCompletedCrop(c)}
-            aspect={1}
-            circularCrop
             className="max-h-[60vh] mx-auto"
           >
             <img
@@ -464,19 +458,27 @@ export default function ProfilePage() {
   };
 
   const handleCropComplete = (croppedImageUrl: string) => {
-    setImagePreview(croppedImageUrl);
-    setCropSrc(null);
-    
-    // Simpan image sebagai base64 string di localStorage
+    // Langsung konversi ke base64 untuk menghindari masalah dengan URL.createObjectURL
     fetch(croppedImageUrl)
       .then(res => res.blob())
       .then(blob => {
         const reader = new FileReader();
         reader.onloadend = () => {
           const base64String = reader.result as string;
+          // Simpan di localStorage dan juga gunakan sebagai preview
           localStorage.setItem('profileImagePreview', base64String);
+          setImagePreview(base64String);
+          
+          // Revoke URL object untuk mencegah memory leak
+          URL.revokeObjectURL(croppedImageUrl);
         };
         reader.readAsDataURL(blob);
+      })
+      .catch(err => {
+        console.error("Error converting blob URL to base64:", err);
+      })
+      .finally(() => {
+        setCropSrc(null);
       });
   };
 
@@ -616,7 +618,7 @@ export default function ProfilePage() {
                 <img
                   src={imagePreview}
                   alt="Profile"
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain"
                 />
               ) : (
                 <div className="w-full h-full" data-testid="photo-placeholder">
@@ -656,7 +658,7 @@ export default function ProfilePage() {
                 <div className="w-24 h-24 profile-container overflow-hidden">
                   <label htmlFor="image-upload" className="profile-content flex items-center justify-center cursor-pointer">
                     {imagePreview ? (
-                      <img src={imagePreview} alt="Profile Preview" className="w-full h-full object-cover" />
+                      <img src={imagePreview} alt="Profile Preview" className="w-full h-full object-contain" />
                     ) : (
                       <div className="w-full h-full relative" data-testid="edit-photo-placeholder">
                         <PhotoPlaceholder name={profile.name} username={profile.username} />
