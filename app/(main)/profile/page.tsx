@@ -4,6 +4,44 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { getProfile, updateProfile } from '../../lib/api';
 import { getZodiacSign, getChineseZodiac } from '../../lib/zodiac';
+import ReactCrop, { Crop, PixelCrop, centerCrop, makeAspectCrop } from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
+
+// Fungsi untuk menghasilkan gambar hasil crop
+function getCroppedImg(image: HTMLImageElement, crop: PixelCrop): Promise<string> {
+  const canvas = document.createElement('canvas');
+  const scaleX = image.naturalWidth / image.width;
+  const scaleY = image.naturalHeight / image.height;
+  canvas.width = crop.width;
+  canvas.height = crop.height;
+  const ctx = canvas.getContext('2d');
+
+  if (!ctx) {
+    return Promise.reject(new Error('No 2d context'));
+  }
+
+  // Gambar crop ke canvas
+  ctx.drawImage(
+    image,
+    crop.x * scaleX,
+    crop.y * scaleY,
+    crop.width * scaleX,
+    crop.height * scaleY,
+    0,
+    0,
+    crop.width,
+    crop.height
+  );
+
+  // Gunakan toDataURL untuk langsung mendapatkan base64 string
+  // Ini lebih aman daripada URL.createObjectURL untuk React
+  try {
+    const base64Image = canvas.toDataURL('image/jpeg', 0.95);
+    return Promise.resolve(base64Image);
+  } catch (e) {
+    return Promise.reject(new Error('Canvas export failed'));
+  }
+}
 
 // --- Icons ---
 const BackIcon = () => (
@@ -263,6 +301,88 @@ const CustomDropdown = ({ options, value, onChange, placeholder, name, id }: Cus
   );
 };
 
+// Modal untuk cropping gambar
+const ImageCropModal = ({ 
+  src, 
+  onCropComplete, 
+  onCancel 
+}: { 
+  src: string; 
+  onCropComplete: (croppedImageUrl: string) => void; 
+  onCancel: () => void 
+}) => {
+  const [crop, setCrop] = useState<Crop>();
+  const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  function onImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
+    const { width, height } = e.currentTarget;
+    
+    // Buat crop awal tanpa aspect ratio yang tetap
+    const initialCrop: Crop = {
+      unit: '%',
+      x: 5,
+      y: 5,
+      width: 90,
+      height: 90
+    };
+    
+    setCrop(initialCrop);
+  }
+
+  const handleComplete = async () => {
+    if (imgRef.current && completedCrop) {
+      try {
+        const croppedImageUrl = await getCroppedImg(imgRef.current, completedCrop);
+        onCropComplete(croppedImageUrl);
+      } catch (e) {
+        console.error('Error generating crop', e);
+      }
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+      <div className="bg-gray-800 rounded-xl p-5 max-w-lg w-full">
+        <h3 className="text-lg font-bold mb-4">Sesuaikan Gambar Profil</h3>
+        <p className="text-sm text-gray-300 mb-4">Geser dan sesuaikan gambar agar pas dengan frame profil. Anda bebas mengatur ukuran dan posisi crop.</p>
+        
+        <div className="mb-4">
+          <ReactCrop
+            crop={crop}
+            onChange={(c) => setCrop(c)}
+            onComplete={(c) => setCompletedCrop(c)}
+            className="max-h-[60vh] mx-auto"
+          >
+            <img
+              ref={imgRef}
+              src={src}
+              alt="Crop me"
+              onLoad={onImageLoad}
+              className="max-h-[60vh] mx-auto"
+            />
+          </ReactCrop>
+        </div>
+        
+        <div className="flex justify-end gap-3">
+          <button 
+            onClick={onCancel}
+            className="px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
+          >
+            Cancel
+          </button>
+          <button 
+            onClick={handleComplete}
+            className="px-4 py-2 bg-gradient-to-l from-teal-300 to-blue-500 rounded-lg hover:opacity-90 transition-opacity"
+          >
+            Apply
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function ProfilePage() {
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -273,6 +393,7 @@ export default function ProfilePage() {
   const [showMenu, setShowMenu] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
 
   const handleUpdate = async () => {
     if (!profile) return;
@@ -330,16 +451,41 @@ export default function ProfilePage() {
         return;
       }
       
+      // Buat URL untuk preview dan cropping
       const imageUrl = URL.createObjectURL(file);
-      setImagePreview(imageUrl);
-      
-      // Simpan image sebagai base64 string di localStorage untuk menghindari error blob URL
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
-        localStorage.setItem('profileImagePreview', base64String);
-      };
-      reader.readAsDataURL(file);
+      setCropSrc(imageUrl);
+    }
+  };
+
+  const handleCropComplete = (croppedImageUrl: string) => {
+    // Langsung konversi ke base64 untuk menghindari masalah dengan URL.createObjectURL
+    fetch(croppedImageUrl)
+      .then(res => res.blob())
+      .then(blob => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64String = reader.result as string;
+          // Simpan di localStorage dan juga gunakan sebagai preview
+          localStorage.setItem('profileImagePreview', base64String);
+          setImagePreview(base64String);
+          
+          // Revoke URL object untuk mencegah memory leak
+          URL.revokeObjectURL(croppedImageUrl);
+        };
+        reader.readAsDataURL(blob);
+      })
+      .catch(err => {
+        console.error("Error converting blob URL to base64:", err);
+      })
+      .finally(() => {
+        setCropSrc(null);
+      });
+  };
+
+  const handleCropCancel = () => {
+    setCropSrc(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -427,6 +573,15 @@ export default function ProfilePage() {
       {/* Tambahkan style untuk animasi */}
       <style jsx>{glowingBorderStyle}</style>
       
+      {/* Image Crop Modal */}
+      {cropSrc && (
+        <ImageCropModal
+          src={cropSrc}
+          onCropComplete={handleCropComplete}
+          onCancel={handleCropCancel}
+        />
+      )}
+      
       {/* Header */}
       <div className="flex items-center justify-between h-12">
         <button onClick={() => window.history.back()} className="p-2">
@@ -463,7 +618,7 @@ export default function ProfilePage() {
                 <img
                   src={imagePreview}
                   alt="Profile"
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain"
                 />
               ) : (
                 <div className="w-full h-full" data-testid="photo-placeholder">
@@ -503,7 +658,7 @@ export default function ProfilePage() {
                 <div className="w-24 h-24 profile-container overflow-hidden">
                   <label htmlFor="image-upload" className="profile-content flex items-center justify-center cursor-pointer">
                     {imagePreview ? (
-                      <img src={imagePreview} alt="Profile Preview" className="w-full h-full object-cover" />
+                      <img src={imagePreview} alt="Profile Preview" className="w-full h-full object-contain" />
                     ) : (
                       <div className="w-full h-full relative" data-testid="edit-photo-placeholder">
                         <PhotoPlaceholder name={profile.name} username={profile.username} />
