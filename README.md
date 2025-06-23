@@ -1,24 +1,66 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# YouApp Frontend Technical Challenge
+
+This project is a mobile web application built with Next.js as part of a frontend technical challenge. The application is based on a Figma design and includes features like user registration, login, and profile viewing/editing.
+
+## Tech Stack
+
+- **Framework**: [Next.js](https://nextjs.org/) 13+ (with App Router)
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
+- **API Communication**: [Axios](https://axios-http.com/)
+- **Language**: TypeScript
 
 ## Getting Started
 
-First, run the development server:
+Follow these instructions to get a copy of the project up and running on your local machine for development and testing purposes.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) (version 18.x or later)
+- [npm](https://www.npmjs.com/)
+
+### Installation & Running
+
+1.  **Clone the repository** (or if you already have the project, navigate into the directory).
+
+2.  **Install dependencies**:
+    ```bash
+    npm install
+    ```
+
+3.  **Run the development server**:
+    ```bash
+    npm run dev
+    ```
+
+4.  Open [http://localhost:3000](http://localhost:3000) with your browser to see the result. The first page you'll see is the Login page.
+
+## Project Structure
+
+The project follows a feature-based structure within the `app` directory:
+
+```
+app/
+├── (auth)/                 # Route group for authentication pages
+│   ├── login/page.tsx      # Login page UI and logic
+│   └── register/page.tsx   # Register page UI and logic
+├── (main)/                 # Route group for main app pages (post-login)
+│   └── profile/page.tsx    # Profile page UI and logic
+├── components/             # Shared React components (if any)
+├── lib/                    # Shared library/helper functions
+│   └── api.ts              # Axios instance for API calls
+└── layout.tsx              # Root layout for the application
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## API Endpoints
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The application connects to the following API endpoints provided by `http://techtest.youapp.ai/`:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `POST /api/register`: For user registration.
+- `POST /api/login`: For user login.
+- `GET /api/profile`: To fetch user profile data.
+- `PUT /api/profile`: To update user profile data.
+
+Authentication is handled by sending an `x-access-token` in the headers after a successful login.
 
 ## Learn More
 

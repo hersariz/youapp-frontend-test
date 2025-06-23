@@ -1,26 +1,37 @@
-@import "tailwindcss";
-
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  color: white;
+  font-family: Inter, sans-serif;
+  min-height: 100vh;
+  /* Apply the gradient to the body, pointing to the top right */
+  background: linear-gradient(to top right, #09141A 50%, #1F4247 100%);
+}
+
+.bg-gradient-blue {
+  background: linear-gradient(175deg, #1F4247 5%, #0D1D2A 95%);
+}
+
+.bg-gradient-gold {
+  background: linear-gradient(90deg, #4B9ECE 0%, #2D8AB4 100%);
+}
+
+.bg-card-dark {
+  background: var(--card-dark);
+}
+
+.bg-input {
+  background: var(--input-bg);
+}
+
+@layer components {
+  .input-field {
+    @apply w-full px-4 py-3 bg-input rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500;
+  }
+  
+  .btn-primary {
+    @apply w-full py-3 font-semibold text-white bg-gradient-gold rounded-lg shadow-md hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50;
+  }
 }
