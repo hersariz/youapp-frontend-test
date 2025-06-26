@@ -43,6 +43,40 @@ function getCroppedImg(image: HTMLImageElement, crop: PixelCrop): Promise<string
   }
 }
 
+// Fungsi untuk mendapatkan styling berdasarkan interest
+const getInterestStyle = (interest: string, isSelected: boolean) => {
+  if (!isSelected) return "bg-gray-800 text-white border border-transparent";
+  
+  switch (interest) {
+      case "Music":
+          return "bg-purple-400/30 text-purple-300 border border-purple-400";
+      case "Basketball":
+          return "bg-orange-400/30 text-orange-300 border border-orange-400";
+      case "Fitness":
+          return "bg-green-400/30 text-green-300 border border-green-400";
+      case "Gymming":
+          return "bg-blue-400/30 text-blue-300 border border-blue-400";
+      case "Traveling":
+          return "bg-pink-400/30 text-pink-300 border border-pink-400";
+      case "Reading":
+          return "bg-red-400/30 text-red-300 border border-red-400";
+      case "Writing":
+          return "bg-indigo-400/30 text-indigo-300 border border-indigo-400";
+      case "Coding":
+          return "bg-cyan-400/30 text-cyan-300 border border-cyan-400";
+      case "Gaming":
+          return "bg-violet-400/30 text-violet-300 border border-violet-400";
+      case "Movies":
+          return "bg-amber-400/30 text-amber-300 border border-amber-400";
+      case "Cooking":
+          return "bg-emerald-400/30 text-emerald-300 border border-emerald-400";
+      case "Photography":
+          return "bg-rose-400/30 text-rose-300 border border-rose-400";
+      default:
+          return "bg-yellow-400/30 text-yellow-300 border border-yellow-400";
+  }
+};
+
 // --- Icons ---
 const BackIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -774,7 +808,7 @@ export default function ProfilePage() {
         
         <div className="flex flex-wrap gap-3 bg-gray-800/40 p-4 rounded-lg">
             {profile.interests.map((interest) => (
-              <span key={interest} className="bg-gray-800 rounded-full px-4 py-2 text-sm flex items-center gap-2">
+              <span key={interest} className={`rounded-full px-4 py-2 text-sm flex items-center gap-2 ${getInterestStyle(interest, true)}`}>
                 {interest}
               </span>
             ))}
